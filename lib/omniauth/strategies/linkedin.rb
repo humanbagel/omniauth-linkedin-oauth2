@@ -40,13 +40,23 @@ module OmniAuth
         }
       end
 
+      credentials do
+        original_token = access_token
+        hash = {'token' => original_token.token}
+        hash.merge!('refresh_token' => original_token.refresh_token) if original_token.expires? && original_token.refresh_token
+        hash.merge!('expires_at' => original_token.expires_at) if original_token.expires?
+        hash.merge!('expires_in' => original_token.expires_in) if original_token.expires_in.present?
+        hash.merge!('expires' => original_token.expires?)
+        hash
+      end
+
       extra do
         { 'raw_info' => raw_info }
       end
 
       alias :oauth2_access_token :access_token
 
-      def access_token
+      def new_access_token
         ::OAuth2::AccessToken.new(client, oauth2_access_token.token, {
           :mode => :query,
           :param_name => 'oauth2_access_token'
@@ -54,7 +64,7 @@ module OmniAuth
       end
 
       def raw_info
-        @raw_info ||= access_token.get("/v1/people/~:(#{options.fields.join(',')})?format=json").parsed
+        @raw_info ||= new_access_token.get("/v1/people/~:(#{options.fields.join(',')})?format=json").parsed
       end
 
       private
